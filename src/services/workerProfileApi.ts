@@ -11,10 +11,16 @@ import type {
   Task,
 } from '../types';
 
+type WorkerProfileResponse = Worker & {
+  tier: string;
+  credit_score?: number;
+  credit_band?: string;
+};
+
 export const workerProfileApi = {
   // ── Profile ────────────────────────────────────────────────────────────────
   getProfile: () =>
-    apiClient<Worker & { tier: string; credit_score?: number; credit_band?: string }>('/api/v1/worker-profile/me'),
+    apiClient<WorkerProfileResponse>('/api/v1/worker-profile/me'),
 
   createProfile: (data: {
     name: string;
@@ -40,7 +46,7 @@ export const workerProfileApi = {
     longitude?: number | null;
     avatar_url?: string | null;
   }>) =>
-    apiClient<Worker>('/api/v1/worker-profile/me', { method: 'PATCH', body: data }),
+    apiClient<WorkerProfileResponse>('/api/v1/worker-profile/me', { method: 'PATCH', body: data }),
 
   // ── Credit Score ──────────────────────────────────────────────────────────
   getCreditScore: () =>

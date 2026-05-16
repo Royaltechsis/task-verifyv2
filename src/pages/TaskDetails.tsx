@@ -20,6 +20,12 @@ import type { WorkerMatch } from '../types';
 
 type UseCaseFilter = 'best_skill_fit' | 'safest_option' | 'nearest_worker' | 'budget_sensitive';
 
+type TaskMatchCard = WorkerMatch & {
+  avatar_url?: string | null;
+  primary_location: string;
+  metadataSparse: boolean;
+};
+
 const USE_CASE_TABS: Array<{ key: UseCaseFilter; label: string }> = [
   { key: 'best_skill_fit', label: 'Best Skill Fit' },
   { key: 'safest_option', label: 'Safest Option' },
@@ -114,7 +120,7 @@ export default function TaskDetails() {
   }, [displayMatches, workers]);
 
   const filteredMatches = useMemo(() => {
-    return mappedMatches.filter((m: (typeof mappedMatches)[number]) => {
+    return mappedMatches.filter((m: TaskMatchCard) => {
       if (activeUseCase === 'best_skill_fit') {
         return m.use_case_tags.length === 0 || m.use_case_tags.includes(activeUseCase);
       }
@@ -597,7 +603,7 @@ export default function TaskDetails() {
             </div>
             
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
-              {filteredMatches.length > 0 ? filteredMatches.map((workerInfo) => {
+              {filteredMatches.length > 0 ? filteredMatches.map((workerInfo: TaskMatchCard) => {
                 const workerId = workerInfo.worker_id;
 
                 return (
