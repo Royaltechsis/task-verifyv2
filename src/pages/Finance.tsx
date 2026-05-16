@@ -81,6 +81,36 @@ export default function Finance() {
   const [showInsurance, setShowInsurance] = useState(false)
   const [showKYC, setShowKYC] = useState(false)
 
+  const handleWithdraw = () => {
+    const amountInput = window.prompt('Enter withdrawal amount:')
+    if (!amountInput) return
+
+    const amount = Number(amountInput)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      addToast('Enter a valid withdrawal amount', 'error')
+      return
+    }
+
+    const bankCode = window.prompt('Enter bank code:')
+    const bankAccountNumber = window.prompt('Enter bank account number:')
+    const bankName = window.prompt('Enter bank name:')
+
+    if (!bankCode || !bankAccountNumber || !bankName) {
+      addToast('Bank details are required for withdrawal', 'error')
+      return
+    }
+
+    withdrawMutation.mutate(
+      { amount, bankCode, bankAccountNumber, bankName },
+      {
+        onSuccess: () => addToast('Withdrawal request submitted for processing', 'success'),
+        onError: (err: unknown) => {
+          addToast(err instanceof Error ? err.message : 'Failed to withdraw funds', 'error')
+        },
+      }
+    )
+  }
+
   const isLoading = (isWorker && (loadingProfile || loadingCredit)) || loadingWallet || loadingTransactions
 
   const safeNumber = (value: unknown, fallback = 0) => {
@@ -213,7 +243,7 @@ export default function Finance() {
                         <div className="text-[10px] text-blue-200 font-black uppercase tracking-widest mb-1">Fund Wallet via Transfer</div>
                         <div className="flex items-center gap-4">
                           <div className="text-xl font-black">{wallet.squad_va_number}</div>
-                          <div className="text-xs font-bold px-3 py-1 rounded-full bg-white/20">{wallet.squad_bank_code || 'GTB'}</div>
+                          <div className="text-xs font-bold px-3 py-1 rounded-full bg-white/20">{wallet.squad_bank_code || 'No bank set'}</div>
                         </div>
                       </div>
                     )}
@@ -364,24 +394,7 @@ export default function Finance() {
                           <span>{formatNaira(totalEarnings)}</span>
                         </div>
                         <Button 
-                          onClick={() => {
-                            const amount = window.prompt("Enter amount to withdraw:");
-                            if (amount && !isNaN(Number(amount))) {
-                               withdrawMutation.mutate({
-                                 amount: Number(amount),
-                                 bankCode: '058', // Defaulting to GTB
-                                 bankAccountNumber: '0123456789',
-                                 bankName: 'Guaranty Trust Bank'
-                               }, {
-                                 onSuccess: () => {
-                                   addToast("Withdrawal request submitted for processing", "success");
-                                 },
-                                 onError: (err: unknown) => {
-                                   addToast(err instanceof Error ? err.message : "Failed to withdraw funds", "error");
-                                 }
-                               });
-                            }
-                          }}
+                          onClick={handleWithdraw}
                           disabled={withdrawMutation.isPending}
                           className="bg-white text-emerald-600 hover:bg-emerald-50 h-8 text-xs font-black px-4 rounded-xl"
                         >
