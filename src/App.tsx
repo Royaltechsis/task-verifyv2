@@ -14,6 +14,7 @@ import TaskDetails from './pages/TaskDetails'
 import Workers from './pages/Workers'
 import WorkerDetails from './pages/WorkerDetails'
 import Profile from './pages/Profile'
+import TrustScoreBreakdown from './pages/TrustScoreBreakdown'
 import Notifications from './pages/Notifications'
 import Inbox from './pages/Inbox'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -48,6 +49,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/services"
               element={
@@ -85,6 +87,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trust-score-breakdown"
+              element={
+                <ProtectedRoute>
+                  <TrustScoreBreakdown />
                 </ProtectedRoute>
               }
             />

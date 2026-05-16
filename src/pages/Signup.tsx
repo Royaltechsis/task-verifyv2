@@ -113,7 +113,7 @@ export default function Signup() {
             <div className="md:col-span-3 p-8 md:p-10 bg-white">
               <div className="mb-8">
                 <h1 className="text-2xl font-black text-navy-900 tracking-tight">Create Identity</h1>
-                <p className="text-slate-500 mt-1 text-sm font-medium">Join the national economic ecosystem.</p>
+                <p className="text-slate-500 mt-1 text-sm font-medium">Join the economic identity layer ecosystem.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 mb-8">

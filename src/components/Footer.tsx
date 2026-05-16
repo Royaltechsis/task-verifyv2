@@ -44,11 +44,11 @@ export default function Footer() {
             </div>
             <div className="flex flex-col">
               <span className="text-xl font-black tracking-tight">TASKVERIFY</span>
-              <span className="text-[10px] font-bold text-emerald-400 tracking-[0.2em] leading-none mt-1 uppercase">National OS</span>
+              <span className="text-[10px] font-bold text-emerald-400 tracking-[0.2em] leading-none mt-1 uppercase">economic identity layer</span>
             </div>
           </div>
           <p className="text-slate-400 text-sm leading-relaxed mb-8 max-w-sm font-medium">
-            Africa's National Economic Operating System. Connecting informal workers, traders, and financial services through AI-driven trust and verifiable identities.
+            Africa's economic identity layer. Connecting informal workers, traders, and financial services through AI-driven trust and verifiable identities.
           </p>
         </div>
 

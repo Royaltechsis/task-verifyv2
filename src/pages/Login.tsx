@@ -63,7 +63,7 @@ export default function Login() {
             </div>
           </Link>
           <h1 className="text-3xl font-black text-navy-900 tracking-tight">Welcome Back</h1>
-          <p className="text-slate-500 mt-2 font-medium">Access your national economic identity</p>
+          <p className="text-slate-500 mt-2 font-medium">Access your economic identity layer</p>
         </div>
 
         <Card className="border-none shadow-2xl shadow-navy-100/50 rounded-3xl overflow-hidden">

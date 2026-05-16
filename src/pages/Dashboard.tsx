@@ -58,7 +58,7 @@ export default function UserDashboard() {
   const stats = isWorker ? [
     { label: 'Total Earnings', value: formatNaira(workerProfile?.total_earnings || 0), icon: Wallet, color: 'text-emerald-500', bg: 'bg-emerald-50' },
     { label: 'Completed Services', value: String(workerProfile?.tasks_completed || 0), icon: Briefcase, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { label: 'Trust Score', value: workerProfile?.trust_score || user?.trust_score || 0, icon: ShieldCheck, color: 'text-violet-500', bg: 'bg-violet-50' },
+                    { label: 'Trust Score', value: workerProfile?.trust_score || user?.trust_score || 0, icon: ShieldCheck, color: 'text-violet-500', bg: 'bg-violet-50', link: '/trust-score-breakdown' },
     { label: 'Avg Rating', value: `${workerProfile?.avg_rating || 0}★`, icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
   ] : [
     { label: 'Total Spent', value: formatNaira(buyerTasks?.reduce((acc, task) => acc + task.amount_naira, 0) || 0), icon: Wallet, color: 'text-blue-500', bg: 'bg-blue-50' },
@@ -107,9 +107,11 @@ export default function UserDashboard() {
                 <Badge className="bg-emerald-500 text-white border-none font-black text-[9px] uppercase tracking-widest px-2 py-0.5">
                   Verified {user?.role} Identity
                 </Badge>
-                <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-500" /> Trust Score: {workerProfile?.trust_score ?? user?.trust_score ?? 750}
-                </span>
+                <Link to="/trust-score-breakdown" className="text-slate-400 hover:text-emerald-600 transition-colors">
+                  <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-500" /> Trust Score: {workerProfile?.trust_score ?? user?.trust_score ?? 750}
+                  </span>
+                </Link>
               </div>
             </div>
           </div>
@@ -156,15 +158,31 @@ export default function UserDashboard() {
             {/* Stats Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
               {stats.map((stat, i) => (
-                <Card key={stat.label} className="border-none shadow-xl shadow-navy-100/20 rounded-[2rem] overflow-hidden group hover:scale-105 transition-all cursor-pointer bg-white">
-                  <CardContent className="p-6">
-                    <div className={`w-12 h-12 rounded-2xl ${stat.bg} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
-                      <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                    </div>
-                    <div className="text-3xl font-black text-navy-900 tracking-tight">{stat.value}</div>
-                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{stat.label}</div>
-                  </CardContent>
-                </Card>
+                <div key={stat.label} className="h-full">
+                  {stat.link ? (
+                    <Link to={stat.link}>
+                      <Card className="h-full border-none shadow-xl shadow-navy-100/20 rounded-[2rem] overflow-hidden group hover:scale-105 transition-all cursor-pointer bg-white">
+                        <CardContent className="p-6">
+                          <div className={`w-12 h-12 rounded-2xl ${stat.bg} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+                            <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                          </div>
+                          <div className="text-3xl font-black text-navy-900 tracking-tight">{stat.value}</div>
+                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{stat.label}</div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ) : (
+                    <Card className="h-full border-none shadow-xl shadow-navy-100/20 rounded-[2rem] overflow-hidden group hover:scale-105 transition-all cursor-pointer bg-white">
+                      <CardContent className="p-6">
+                        <div className={`w-12 h-12 rounded-2xl ${stat.bg} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+                          <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                        </div>
+                        <div className="text-3xl font-black text-navy-900 tracking-tight">{stat.value}</div>
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{stat.label}</div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               ))}
             </div>
 
