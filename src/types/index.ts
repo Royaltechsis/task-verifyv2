@@ -211,6 +211,13 @@ export interface CreditScore {
   tier: 'normal' | 'verified';
   loan_eligible: boolean;
   insurance_eligible: boolean;
+  breakdown?: {
+    trust_score_contribution: number;
+    completion_rate: string;
+    on_time_rate: string;
+    avg_rating: string;
+    tasks_completed: number;
+  };
   notes?: string;
 }
 

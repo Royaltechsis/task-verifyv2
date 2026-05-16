@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -33,12 +33,6 @@ import LoanModal from '../components/LoanModal'
 import InsuranceModal from '../components/InsuranceModal'
 import KYCModal from '../components/KYCModal'
 import { DisputesSection } from '../components/DisputesSection'
-
-const earningsMock = [
-  { month: 'Jul', earnings: 18000 }, { month: 'Aug', earnings: 22000 },
-  { month: 'Sep', earnings: 19500 }, { month: 'Oct', earnings: 28000 },
-  { month: 'Nov', earnings: 31000 }, { month: 'Dec', earnings: 32000 },
-]
 
 const riskColors: Record<string, { bg: string; text: string; bar: string; iconColor: string }> = {
   low: { bg: 'bg-emerald-50', text: 'text-emerald-700', bar: 'bg-emerald-500', iconColor: 'text-emerald-500' },
@@ -89,15 +83,84 @@ export default function Finance() {
 
   const isLoading = (isWorker && (loadingProfile || loadingCredit)) || loadingWallet || loadingTransactions
 
-  // Fallback data
-  const creditScore = workerProfile?.financial_profile?.credit_score ?? workerProfile?.credit_score ?? creditProfile?.credit_score ?? user?.trust_score ?? 724
-  const loanEligible = workerProfile?.financial_profile?.loan_eligibility ?? creditProfile?.loan_eligible ?? true
-  const recommendedLoan = workerProfile?.financial_profile?.recommended_loan ?? 150000
-  const riskLevel = workerProfile?.economic_profile?.risk_level ?? 'low'
-  const risk = riskColors[riskLevel] ?? riskColors.low
-  const walletBalance = workerProfile?.current_month_earnings ?? 0
-  const totalEarnings = workerProfile?.total_earnings ?? 0
-  const onTimeRate = workerProfile?.on_time_rate ?? 0
+  const safeNumber = (value: unknown, fallback = 0) => {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : fallback
+  }
+
+  const skillTags = workerProfile?.skills ?? []
+  const trustScore = workerProfile?.trust_score ?? user?.trust_score ?? 0
+  const trustLabel = trustScore >= 750 ? 'Excellent' : trustScore >= 650 ? 'Strong' : trustScore >= 500 ? 'Building' : trustScore >= 350 ? 'Emerging' : 'Early'
+  const creditScore = creditProfile?.credit_score ?? workerProfile?.credit_score ?? workerProfile?.financial_profile?.credit_score ?? 0
+  const creditBand = creditProfile?.credit_band ?? workerProfile?.credit_band ?? 'poor'
+  const creditBandLabel = creditBand.charAt(0).toUpperCase() + creditBand.slice(1)
+  const loanEligible = creditProfile?.loan_eligible ?? workerProfile?.financial_profile?.loan_eligibility ?? false
+  const recommendedLoan = workerProfile?.financial_profile?.recommended_loan ?? 0
+  const riskLevel = workerProfile?.economic_profile?.risk_level ?? 'medium'
+  const risk = riskColors[riskLevel] ?? riskColors.medium
+  const walletBalance = safeNumber(wallet?.balance, safeNumber(workerProfile?.current_month_earnings, 0))
+  const lockedBalance = safeNumber(wallet?.locked_balance, 0)
+  const totalEarnings = safeNumber(workerProfile?.total_earnings, 0)
+  const currentMonthEarnings = safeNumber(workerProfile?.current_month_earnings, 0)
+  const onTimeRate = safeNumber(workerProfile?.on_time_rate, 0)
+  const avgRating = safeNumber(workerProfile?.avg_rating, 0)
+  const tasksCompleted = safeNumber(workerProfile?.tasks_completed, 0)
+  const tasksSuccessful = safeNumber(workerProfile?.tasks_successful, 0)
+  const completionRate = tasksCompleted > 0 ? Math.round((tasksSuccessful / tasksCompleted) * 100) : 0
+  const reliabilityScore = workerProfile?.economic_profile?.reliability_score ?? 0
+  const behavioralScore = workerProfile?.economic_profile?.behavioral_score ?? 0
+  const isVerified = workerProfile?.economic_profile?.identity_verified ?? false
+  const trustProgress = Math.min((trustScore / 850) * 100, 100)
+
+  const monthlyEarnings = useMemo(() => {
+    const monthly = new Map<string, number>()
+    transactions?.forEach((transaction) => {
+      const amount = safeNumber(transaction.amount, 0)
+      const date = new Date(transaction.created_at)
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const normalizedAmount = transaction.transaction_type === 'earning' || transaction.transaction_type === 'deposit' ? amount : 0
+      monthly.set(key, (monthly.get(key) ?? 0) + normalizedAmount)
+    })
+
+    return Array.from(monthly.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([key, earnings]) => {
+        const [year, month] = key.split('-').map(Number)
+        return {
+          month: new Date(year, month - 1).toLocaleString('en-US', { month: 'short' }),
+          earnings,
+        }
+      })
+  }, [transactions])
+
+  const chartData = monthlyEarnings.length > 0
+    ? monthlyEarnings
+    : currentMonthEarnings > 0
+      ? [{ month: new Date().toLocaleString('en-US', { month: 'short' }), earnings: currentMonthEarnings }]
+      : []
+
+  const trustMetrics = [
+    { label: 'Tasks Completed', value: tasksCompleted.toString(), helper: 'Verified work delivered', icon: Briefcase },
+    { label: 'Successful Tasks', value: tasksSuccessful.toString(), helper: 'Jobs accepted by buyers', icon: CheckCircle2 },
+    { label: 'Completion Rate', value: `${completionRate}%`, helper: 'Successful ÷ completed', icon: TrendingUp },
+    { label: 'Identity Status', value: isVerified ? 'Verified' : 'Unverified', helper: 'KYC verification state', icon: BadgeCheck },
+  ]
+
+  const creditBreakdown = creditProfile?.breakdown ?? {
+    trust_score_contribution: Math.round(trustScore * 0.35),
+    completion_rate: `${completionRate}%`,
+    on_time_rate: `${Math.round(onTimeRate * 100)}%`,
+    avg_rating: avgRating.toFixed(2),
+    tasks_completed: tasksCompleted,
+  }
+
+  const financialSnapshot = [
+    { label: 'Current Month', value: formatNaira(currentMonthEarnings), helper: 'Earned this month', icon: ArrowUpRight },
+    { label: 'Total Earnings', value: formatNaira(totalEarnings), helper: 'Lifetime earnings', icon: Wallet },
+    { label: 'Wallet Balance', value: formatNaira(walletBalance), helper: 'Available funds', icon: Wallet },
+    { label: 'Escrow Locked', value: formatNaira(lockedBalance), helper: 'Funds in escrow', icon: Lock },
+  ]
 
   if (isLoading) return <FullPageLoader />
 
@@ -133,7 +196,7 @@ export default function Finance() {
                       </div>
                       <Badge className="bg-emerald-500/20 text-emerald-300 border-none px-3 py-1 text-[10px] uppercase font-black">Active</Badge>
                     </div>
-                    <div className="text-5xl font-black mb-2">{formatNaira(Number(wallet?.balance || 0))}</div>
+                    <div className="text-5xl font-black mb-2">{formatNaira(walletBalance)}</div>
                     <div className="text-xs font-medium text-blue-200">Available to fund tasks and escrow</div>
                   </div>
                   <div className="flex gap-4 mt-8">
@@ -168,13 +231,13 @@ export default function Finance() {
                       <Lock className="w-5 h-5 text-navy-900" />
                     </div>
                     <div>
-                      <div className="text-2xl font-black text-navy-900">{formatNaira(Number(wallet?.locked_balance || 0))}</div>
+                      <div className="text-2xl font-black text-navy-900">{formatNaira(lockedBalance)}</div>
                       <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Currently in Escrow</div>
                     </div>
                   </div>
                   <Progress value={45} className="h-1.5 bg-slate-100" />
                   <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                    Funds are securely held in escrow until you approve the completed task.
+                    Funds are securely held in escrow until buyer release or automatic payout.
                   </p>
                 </CardContent>
               </Card>
@@ -238,14 +301,33 @@ export default function Finance() {
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">AI-Driven Financial Reputation</p>
                 </div>
                 
-                <CreditGauge score={creditScore} />
+                <CreditGauge score={trustScore} />
+
+                <div className="mt-6 w-full rounded-[1.5rem] bg-slate-50 border border-slate-100 p-5 text-center">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Credit Score</div>
+                  <div className="text-3xl font-black text-navy-900 leading-none">{creditScore}</div>
+                  <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">{creditBandLabel} Band</div>
+                </div>
+
+                <div className="mt-5 w-full rounded-[1.5rem] bg-white border border-slate-100 p-5 shadow-sm">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Trust Snapshot</div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-4xl font-black text-navy-900 leading-none">{trustScore}</div>
+                      <div className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">{trustLabel}</div>
+                    </div>
+                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black text-[10px] uppercase tracking-widest px-3 py-1.5">
+                      {workerProfile?.tier || 'normal'} tier
+                    </Badge>
+                  </div>
+                </div>
                 
                 <div className="w-full space-y-5 mt-10">
                   {[
-                    { label: 'Work Consistency', pct: 94, icon: Clock },
-                    { label: 'Payment Velocity', pct: 98, icon: TrendingUp },
-                    { label: 'Dispute-Free Rate', pct: 100, icon: ShieldCheck },
-                    { label: 'Income Growth', pct: 88, icon: ArrowUpRight },
+                    { label: 'Work Consistency', pct: Math.round(onTimeRate * 100) || 0, icon: Clock },
+                    { label: 'Reliability Score', pct: reliabilityScore, icon: ShieldCheck },
+                    { label: 'Behavioral Score', pct: behavioralScore, icon: BadgeCheck },
+                    { label: 'Loan Readiness', pct: creditProfile?.loan_eligible || loanEligible ? 100 : 0, icon: Landmark },
                   ].map((factor) => (
                     <div key={factor.label} className="space-y-2">
                       <div className="flex justify-between items-center px-1">
@@ -255,7 +337,7 @@ export default function Finance() {
                         </div>
                         <span className="text-xs font-black text-emerald-600">{factor.pct}%</span>
                       </div>
-                      <Progress value={factor.pct} className="h-1.5 bg-slate-100" />
+                      <Progress value={Math.max(0, Math.min(factor.pct, 100))} className="h-1.5 bg-slate-100" />
                     </div>
                   ))}
                 </div>
@@ -274,7 +356,7 @@ export default function Finance() {
                     <Wallet className="absolute -right-4 -bottom-4 w-24 h-24 text-white/10 group-hover:scale-110 transition-transform" />
                     <div className="relative z-10">
                       <div className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Available Balance</div>
-                      <div className="text-3xl font-black mb-1">{formatNaira(Number(wallet?.balance ?? walletBalance))}</div>
+                      <div className="text-3xl font-black mb-1">{formatNaira(walletBalance)}</div>
                       <div className="text-[10px] font-bold opacity-70">Secured via Squad Rails</div>
                       <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
                         <div className="flex flex-col text-[10px] font-bold">
@@ -294,8 +376,8 @@ export default function Finance() {
                                  onSuccess: () => {
                                    addToast("Withdrawal request submitted for processing", "success");
                                  },
-                                 onError: (err: any) => {
-                                   addToast(err.message || "Failed to withdraw funds", "error");
+                                 onError: (err: unknown) => {
+                                   addToast(err instanceof Error ? err.message : "Failed to withdraw funds", "error");
                                  }
                                });
                             }
@@ -321,11 +403,10 @@ export default function Finance() {
                           <><AlertCircle className="w-5 h-5 text-slate-300" /> PENDING</>
                         )}
                       </div>
-                      {loanEligible ? (
-                        <div className="text-xl font-black text-blue-700 mt-4">{formatNaira(recommendedLoan)}</div>
-                      ) : (
-                        <div className="text-xs font-bold mt-4">Continue building history</div>
-                      )}
+                      <div className="text-xl font-black text-blue-700 mt-4">
+                        {loanEligible ? formatNaira(recommendedLoan) : 'No active offer'}
+                      </div>
+                      <div className="text-xs font-bold mt-4">{creditProfile?.notes || 'Build trust and verification to unlock loans.'}</div>
                     </div>
                   </Card>
 
@@ -340,9 +421,9 @@ export default function Finance() {
                       <div className="mt-4">
                         <div className="flex justify-between text-[10px] font-bold mb-1">
                           <span>Reliability Pct</span>
-                          <span>{riskLevel === 'low' ? '98%' : '82%'}</span>
+                          <span>{reliabilityScore}%</span>
                         </div>
-                        <Progress value={riskLevel === 'low' ? 98 : 82} className="h-1 bg-white/50" />
+                        <Progress value={Math.max(0, Math.min(reliabilityScore, 100))} className="h-1 bg-white/50" />
                       </div>
                     </div>
                   </Card>
@@ -355,12 +436,13 @@ export default function Finance() {
                       <h3 className="font-black text-navy-900 text-xl tracking-tight">Income Analytics</h3>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Verified Revenue Pipeline</p>
                     </div>
-                    <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-xs px-4 py-1.5">+42% YoY Growth</Badge>
+                    <Badge className="bg-emerald-50 text-emerald-600 border-none font-black text-xs px-4 py-1.5">Live from transactions</Badge>
                   </div>
                   
                   <div className="h-[220px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={earningsMock}>
+                    {chartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData}>
                         <defs>
                           <linearGradient id="earnGrad" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
@@ -375,8 +457,16 @@ export default function Finance() {
                           contentStyle={{ borderRadius: '1.5rem', border: 'none', boxShadow: '0 20px 50px rgba(10,22,40,0.1)', fontSize: '12px', fontWeight: 'bold' }} 
                         />
                         <Area type="monotone" dataKey="earnings" stroke="#10B981" strokeWidth={4} fill="url(#earnGrad)" dot={{ fill: '#10B981', stroke: '#fff', strokeWidth: 2, r: 6 }} activeDot={{ r: 8, strokeWidth: 0 }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-center px-6">
+                        <div>
+                          <div className="text-sm font-black text-navy-900 mb-1">No earnings history yet</div>
+                          <div className="text-xs text-slate-400 font-medium">Your chart will appear after transaction activity starts.</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </Card>
               </div>
@@ -387,16 +477,11 @@ export default function Finance() {
                   <div className="w-10 h-10 rounded-xl bg-navy-900 flex items-center justify-center text-white">
                     <PieChartIcon className="w-5 h-5" />
                   </div>
-                  <h3 className="font-black text-navy-900 text-xl tracking-tight">National Economic Identity Factors</h3>
+                  <h3 className="font-black text-navy-900 text-xl tracking-tight">Financial Snapshot</h3>
                 </div>
                 
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
-                  {[
-                    { label: 'Reliability Rate', value: `${Math.round(onTimeRate * 100)}%`, icon: Clock, desc: 'Tasks completed on or before schedule' },
-                    { label: 'Ecosystem Volume', value: workerProfile?.tasks_completed ?? 42, icon: Briefcase, desc: 'Total verified transactions on OS' },
-                    { label: 'Public Rating', value: `${Number(workerProfile?.avg_rating ?? 4.8).toFixed(1)}★`, icon: Star, desc: 'AI-verified customer satisfaction score' },
-                    { label: 'System Integrity', value: '100%', icon: ShieldCheck, desc: 'Zero disputes or flagged interactions' },
-                  ].map((metric) => (
+                  {financialSnapshot.map((metric) => (
                     <div key={metric.label} className="flex flex-col gap-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
@@ -406,15 +491,113 @@ export default function Finance() {
                       </div>
                       <div>
                         <div className="text-[10px] font-black text-navy-900 uppercase tracking-widest mb-1">{metric.label}</div>
-                        <div className="text-[10px] text-slate-400 font-bold leading-relaxed">{metric.desc}</div>
+                        <div className="text-[10px] text-slate-400 font-bold leading-relaxed">{metric.helper}</div>
                       </div>
                     </div>
                   ))}
                 </div>
               </Card>
 
+              <Card className="lg:col-span-3 border-none shadow-2xl shadow-navy-100/50 rounded-[2.5rem] p-10 bg-white">
+                <div className="flex items-center gap-3 mb-10">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-black text-navy-900 text-xl tracking-tight">Profile Intelligence</h3>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-3 rounded-[1.5rem] bg-slate-50 border border-slate-100 p-6">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Skills</div>
+                    <div className="flex flex-wrap gap-2">
+                      {skillTags.length > 0 ? skillTags.map((skill) => (
+                        <Badge key={skill} className="bg-white text-navy-900 border border-slate-200 font-black uppercase tracking-widest px-3 py-1.5">
+                          {skill}
+                        </Badge>
+                      )) : (
+                        <div className="text-sm text-slate-500 font-medium">No skills listed.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-[1.5rem] bg-slate-50 border border-slate-100 p-6">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Account Status</div>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <Badge className={`${workerProfile?.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-500'} border-none font-black uppercase tracking-widest px-3 py-1.5`}>
+                        {workerProfile?.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                      <Badge className="bg-blue-50 text-blue-700 border-blue-100 font-black uppercase tracking-widest px-3 py-1.5">
+                        Tier: {workerProfile?.tier || 'normal'}
+                      </Badge>
+                      <Badge className="bg-amber-50 text-amber-700 border-amber-100 font-black uppercase tracking-widest px-3 py-1.5">
+                        Credit: {creditBandLabel}
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-slate-600 font-medium leading-relaxed">
+                      {workerProfile?.bio || 'No bio provided.'}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-[1.5rem] bg-slate-50 border border-slate-100 p-6">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trust Summary</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trust Score</div>
+                        <div className="text-2xl font-black text-navy-900">{trustScore}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Credit Score</div>
+                        <div className="text-2xl font-black text-navy-900">{creditScore}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Risk Level</div>
+                        <div className="text-lg font-black text-navy-900 capitalize">{riskLevel}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reliability</div>
+                        <div className="text-lg font-black text-navy-900">{reliabilityScore}/100</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-[1.5rem] bg-slate-50 border border-slate-100 p-6">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Financial Profile</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loan Eligibility</div>
+                        <div className="text-lg font-black text-navy-900">{loanEligible ? 'Eligible' : 'Not eligible'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recommended Loan</div>
+                        <div className="text-lg font-black text-navy-900">{formatNaira(recommendedLoan)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Insurance Risk</div>
+                        <div className="text-lg font-black text-navy-900 capitalize">{workerProfile?.financial_profile?.insurance_risk_level || 'medium'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">KYC</div>
+                        <div className="text-lg font-black text-navy-900">{isVerified ? 'Verified' : 'Pending'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-[1.5rem] bg-slate-50 border border-slate-100 p-6 md:col-span-2">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Credit Score Breakdown</div>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div><div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trust Contribution</div><div className="text-lg font-black text-navy-900">{creditBreakdown.trust_score_contribution}</div></div>
+                      <div><div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Completion Rate</div><div className="text-lg font-black text-navy-900">{creditBreakdown.completion_rate}</div></div>
+                      <div><div className="text-[10px] font-black uppercase tracking-widest text-slate-400">On-Time Rate</div><div className="text-lg font-black text-navy-900">{creditBreakdown.on_time_rate}</div></div>
+                      <div><div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Average Rating</div><div className="text-lg font-black text-navy-900">{creditBreakdown.avg_rating}</div></div>
+                      <div><div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tasks Completed</div><div className="text-lg font-black text-navy-900">{creditBreakdown.tasks_completed}</div></div>
+                      <div><div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notes</div><div className="text-sm font-medium text-slate-600 leading-relaxed">{creditProfile?.notes || 'Complete KYC verification to unlock loan and insurance products.'}</div></div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
               {/* Credit Opportunity CTA */}
-              {loanEligible && (
+              {loanEligible && recommendedLoan > 0 && (
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
                   className="lg:col-span-3 rounded-[2.5rem] p-10 bg-gradient-to-r from-navy-950 to-blue-900 text-white flex flex-col lg:flex-row items-center justify-between gap-10 overflow-hidden relative"
                 >
@@ -424,7 +607,7 @@ export default function Finance() {
                   <div className="relative z-10 text-center lg:text-left">
                     <Badge className="bg-emerald-500 text-white border-none px-4 py-1 mb-4 uppercase tracking-widest font-black">Capital Access Unlocked</Badge>
                     <h2 className="text-3xl md:text-4xl font-black mb-4 tracking-tight leading-tight">You qualify for {formatNaira(recommendedLoan)} in working capital 🎉</h2>
-                    <p className="text-slate-400 text-lg font-medium max-w-2xl">Based on your ecosystem history and trust score. Zero paperwork. Instant disbursement.</p>
+                    <p className="text-slate-400 text-lg font-medium max-w-2xl">Based on your trust score, reliability, and verified earnings.</p>
                   </div>
                   <Button onClick={() => setShowLoan(true)} className="h-16 px-12 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xl shadow-2xl shadow-emerald-900/20 whitespace-nowrap relative z-10 transition-transform hover:scale-105 active:scale-95">
                     Apply & Unlock Capital <ArrowUpRight className="ml-3 w-6 h-6" />

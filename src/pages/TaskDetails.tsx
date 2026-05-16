@@ -92,7 +92,7 @@ export default function TaskDetails() {
     ? task.ai_recommendations
     : (matches.length > 0 ? matches : (task?.shortlisted_workers || []));
 
-  const mappedMatches = useMemo(() => {
+  const mappedMatches = useMemo<TaskMatchCard[]>(() => {
     return (displayMatches || []).map((workerOrId: number | WorkerMatch) => {
       const isMatchObject = typeof workerOrId === 'object' && workerOrId !== null;
       const raw = (isMatchObject ? workerOrId : {}) as Partial<WorkerMatch>;
@@ -125,7 +125,7 @@ export default function TaskDetails() {
     });
   }, [displayMatches, workers]);
 
-  const filteredMatches = useMemo(() => {
+  const filteredMatches = useMemo<TaskMatchCard[]>(() => {
     return mappedMatches.filter((m: TaskMatchCard) => {
       if (activeUseCase === 'best_skill_fit') {
         return m.use_case_tags.length === 0 || m.use_case_tags.includes(activeUseCase);
