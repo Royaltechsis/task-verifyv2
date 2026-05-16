@@ -24,6 +24,12 @@ type TaskMatchCard = WorkerMatch & {
   avatar_url?: string | null;
   primary_location: string;
   metadataSparse: boolean;
+  recommendation_reason: string;
+  tradeoff_note: string;
+  use_case_tags: string[];
+  strengths: string[];
+  risks: string[];
+  confidence: number | null;
 };
 
 const USE_CASE_TABS: Array<{ key: UseCaseFilter; label: string }> = [
