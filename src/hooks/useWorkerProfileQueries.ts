@@ -1,14 +1,31 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { workerProfileApi } from '../services/workerProfileApi';
-import type { KYCData, LoanApplication, InsuranceApplication } from '../types';
+import type { KYCData, LoanApplication, InsuranceApplication, Worker } from '../types';
+
+export type WorkerProfile = Worker & {
+  tier: string;
+  credit_score?: number;
+  credit_band?: string;
+};
+
+type WorkerProfileUpdatePayload = Partial<{
+  name: string;
+  phone?: string | null;
+  skills?: string[];
+  bio?: string | null;
+  primary_location?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  avatar_url?: string | null;
+}>;
 
 // ── Profile ──────────────────────────────────────────────────────────────────
-export function useWorkerProfile(options?: Parameters<typeof useQuery>[0]) {
-  return useQuery({
+export function useWorkerProfile(options?: { enabled?: boolean; retry?: boolean }) {
+  return useQuery<WorkerProfile>({
     queryKey: ['worker', 'profile'],
     queryFn: workerProfileApi.getProfile,
     ...options,
-  } as Parameters<typeof useQuery>[0]);
+  });
 }
 
 export function useCreateWorkerProfile() {
@@ -22,8 +39,8 @@ export function useCreateWorkerProfile() {
 export function useUpdateWorkerProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<import('../types').Worker>) => workerProfileApi.updateProfile(data),
-    onSuccess: (data: import('../types').Worker) => {
+    mutationFn: (data: WorkerProfileUpdatePayload) => workerProfileApi.updateProfile(data),
+    onSuccess: (data: WorkerProfile) => {
       queryClient.invalidateQueries({ queryKey: ['worker', 'profile'] });
       queryClient.setQueryData(['worker', 'profile'], data);
     },

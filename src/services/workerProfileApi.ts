@@ -32,13 +32,13 @@ export const workerProfileApi = {
     }),
   updateProfile: (data: Partial<{
     name: string;
-    phone?: string;
+    phone?: string | null;
     skills?: string[];
-    bio?: string;
+    bio?: string | null;
     primary_location?: string;
-    latitude?: number;
-    longitude?: number;
-    avatar_url?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    avatar_url?: string | null;
   }>) =>
     apiClient<Worker>('/api/v1/worker-profile/me', { method: 'PATCH', body: data }),
 

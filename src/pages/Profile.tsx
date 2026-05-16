@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQueryClient} from '@tanstack/react-query';
-import { api } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { useApp } from '../context/AppContext';
 import { useWorkerProfile, useCreateWorkerProfile, useWorkerKYC, useUpdateWorkerProfile } from '../hooks/useWorkerProfileQueries';
@@ -13,6 +12,7 @@ import { Input } from '../components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { getInitials, getSkillColor } from '../utils/formatters';
 import { ShieldCheck, User as UserIcon, Mail, MapPin, Edit2, Loader2, Save, X } from 'lucide-react';
+import type { Worker } from '../types';
 
 export default function Profile() {
   const { user, setUser } = useAuth();
@@ -53,7 +53,7 @@ export default function Profile() {
 
   const handleSave = () => {
     updateMutation.mutate(editForm, {
-      onSuccess: (data: any) => {
+      onSuccess: (data: Worker) => {
         addToast('Profile updated successfully!', 'success');
         setIsEditing(false);
         queryClient.invalidateQueries({ queryKey: ['worker', 'profile'] });
@@ -62,8 +62,8 @@ export default function Profile() {
           setUser({ ...user, full_name: data.name || user.full_name });
         }
       },
-      onError: (err: any) => {
-        addToast(err.message || 'Failed to update profile', 'error');
+      onError: (err: unknown) => {
+        addToast(err instanceof Error ? err.message : 'Failed to update profile', 'error');
       }
     });
   };
@@ -85,7 +85,7 @@ export default function Profile() {
         skills: editForm.skills || [],
       },
       {
-        onSuccess: (response: any) => {
+        onSuccess: (response: { message: string; worker: Worker }) => {
           addToast('Worker Profile Created!', 'success');
           if (user && response?.worker?.id) {
             setUser({ ...user, worker_id: response.worker.id });
@@ -96,12 +96,12 @@ export default function Profile() {
             workerProfileApi.updateProfile({ skills: editForm.skills }).then(() => {
               queryClient.invalidateQueries({ queryKey: ['worker', 'profile'] });
             }).catch((err) => {
-              addToast(err.message || 'Failed to save skills', 'error');
+              addToast(err instanceof Error ? err.message : 'Failed to save skills', 'error');
             });
           }
         },
-        onError: (err: any) => {
-          addToast(err.message || 'Failed to create profile', 'error');
+        onError: (err: unknown) => {
+          addToast(err instanceof Error ? err.message : 'Failed to create profile', 'error');
         }
       }
     );

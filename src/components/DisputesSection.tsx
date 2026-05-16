@@ -3,19 +3,19 @@ import { AlertTriangle, Scale, Clock, CheckCircle2 } from 'lucide-react';
 import { useBuyerDisputes } from '../hooks/useBuyerQueries';
 import { useAuth } from '../hooks/useAuth';
 import { Badge } from './ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent} from './ui/card';
 import { SkeletonLoader, EmptyState } from './SkeletonLoader';
 import { formatDate } from '../utils/formatters';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
 
 export function DisputesSection() {
-  const { user } = useAuth();
+  useAuth();
   const { data: disputes, isLoading } = useBuyerDisputes();
   const navigate = useNavigate();
 
   if (isLoading) {
-    return <SkeletonLoader />;
+    return <SkeletonLoader type="tasks" />;
   }
 
   if (!disputes || disputes.length === 0) {
@@ -47,7 +47,6 @@ export function DisputesSection() {
     <div className="space-y-4">
       {disputes.map((dispute, index) => {
         const statusConfig = getStatusConfig(dispute.status);
-        const StatusIcon = statusConfig.icon;
 
         return (
           <motion.div

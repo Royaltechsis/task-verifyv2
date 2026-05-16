@@ -74,6 +74,7 @@ export type TaskStatus =
   | 'shortlisted'
   | 'applications_open'
   | 'selection_in_progress'
+  | 'selected'
   | 'assigned'
   | 'submitted'
   | 'verified'
@@ -120,6 +121,7 @@ export interface Task {
   proof_submission?: Record<string, unknown> | null;
   submitted_at?: string | null;
   ai_verification_result?: Record<string, unknown> | null;
+  ai_recommendations?: WorkerMatch[];
   scenario_recommendations?: ScenarioRecommendation[];
   verified_at?: string | null;
   squad_va_account_number?: string | null;
@@ -269,10 +271,12 @@ export interface TaskVerificationResult {
 export interface Dispute {
   id: number;
   task_id: number;
+  task?: { title?: string } | null;
   reason?: string;
   status: 'open' | 'resolved_worker' | 'resolved_buyer' | 'escalated';
   resolution?: string;
   resolution_note?: string;
+  resolved_at?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -1,5 +1,6 @@
 import { ShieldCheck, AlertCircle, SearchX, RotateCcw } from 'lucide-react';
 import { Button } from './ui/button';
+import type { LucideIcon } from 'lucide-react';
 
 export function WorkerCardSkeleton() {
   return (
@@ -119,11 +120,11 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   );
 }
 
-export function EmptyState({ title, description }: { title: string; description: string }) {
+export function EmptyState({ title, description, icon: Icon }: { title: string; description: string; icon?: LucideIcon }) {
   return (
     <div className="min-h-[40vh] flex flex-col items-center justify-center gap-6 py-20 text-center px-6">
       <div className="w-20 h-20 rounded-[2rem] bg-slate-50 border border-slate-100 flex items-center justify-center shadow-xl shadow-slate-100/50">
-        <SearchX className="w-10 h-10 text-slate-300" />
+        {Icon ? <Icon className="w-10 h-10 text-slate-300" /> : <SearchX className="w-10 h-10 text-slate-300" />}
       </div>
       <div>
         <h3 className="text-xl font-black text-navy-900 mb-2 uppercase tracking-widest">{title}</h3>
@@ -133,7 +134,17 @@ export function EmptyState({ title, description }: { title: string; description:
   );
 }
 
-export function SkeletonLoader({ type }: { type: 'dashboard' | 'tasks' | 'workers' | 'stats' }) {
+export function SkeletonLoader({ type = 'tasks', count }: { type?: 'dashboard' | 'tasks' | 'workers' | 'stats'; count?: number }) {
+  if (count) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: count }).map((_, index) => (
+          <div key={index} className="animate-pulse bg-slate-100 h-16 rounded-2xl" />
+        ))}
+      </div>
+    );
+  }
+
   if (type === 'dashboard') {
     return (
       <div className="space-y-10">
